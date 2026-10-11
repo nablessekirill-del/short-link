@@ -22,6 +22,7 @@ func New(svc *service.Service, baseURL string) *Handler {
 func (h *Handler) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /health", h.health)
 	mux.HandleFunc("POST /api/links", h.createLink)
+	mux.HandleFunc("GET /{code}", h.redirect)
 }
 
 func (h *Handler) health(w http.ResponseWriter, r *http.Request) {
@@ -65,6 +66,23 @@ func (h *Handler) createLink(w http.ResponseWriter, r *http.Request) {
 		URL:      link.URL,
 	})
 
+}
+
+func (h *Handler) redirect(w http.ResponseWriter, r *http.Request) {
+	code := r.PathValue("code")
+
+	link, err := h.svc.Resolve(r.Context(), code)
+	switch {
+	case errors.Is(err, service.ErrNotFound):
+		http.NotFound(w, r)
+		return
+	case err != nil:
+		log.Printf("resolve link: %v", err)
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+
+	http.Redirect(w, r, link.URL, http.StatusFound)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
