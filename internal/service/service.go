@@ -83,3 +83,4 @@ func (s *Service) Resolve(ctx context.Context, code string) (*Link, error) {
 	}
 	return link, nil
 }
+
